@@ -6,9 +6,11 @@
 
 ```
 手机 App (Flutter)
-  ├─ HTTPS → api.frankfurter.app   行情与历史
-  ├─ 本机 SharedPreferences        预警规则、可选 LLM 配置
-  └─ 前台定时刷新时本地判定阈值
+  ├─ HTTPS → Yahoo Finance chart     盘中报价（约 1–5 分钟级）
+  ├─ HTTPS → api.frankfurter.app     失败时的 ECB 日频备源
+  ├─ HTTPS → api.github.com          检查最新 Release
+  ├─ 本机 SharedPreferences          订阅列表、预警、可选 Token
+  └─ 前台约 20 秒刷新并本地判定阈值
 
 电脑 / 服务器 (Python)
   ├─ HTTPS → api.frankfurter.app
@@ -21,9 +23,9 @@
 
 ## 行情
 
-- 客户端与机器人都请求 `https://api.frankfurter.app`。
-- 货币对列表以 `bot/fx_sentinel/rates.py` 的 `WATCHLIST` 与 `app/lib/models.dart` 的 `watchlist` 为准，改动时两边一起改。
-- 单位是 1 单位 base 兑 quote 的中间价，日期为 ECB 发布日，不是实时 Tick。
+- App 优先请求 Yahoo Finance `BASEQUOTE=X` 的 5 分钟 K 线，取 `regularMarketPrice`。失败则回退 Frankfurter / ECB。
+- 订阅列表存在本机；货币元数据见 `app/lib/currencies.dart`。
+- 单位是 1 单位 base 兑 quote。公开行情可能有延迟，不是银行成交价。
 
 ## 预警
 

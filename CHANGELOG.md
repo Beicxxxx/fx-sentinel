@@ -5,10 +5,13 @@
 
 ## [Unreleased]
 
-### 文档
+## [1.1.0] - 2026-08-19
 
-- 补齐 README、许可证、架构说明与发布流程。
-- 约定 GitHub `Beicxxxx/fx-sentinel` 为主仓；Origin 仓库名应对齐为 `fx-sentinel`。
+### 新增
+
+- 任意货币对订阅；Yahoo Finance 盘中报价，失败回退 ECB。
+- 设置页检查更新，对照 GitHub Release。
+- 货币对国旗徽章与卡片改版。
 
 ## [1.0.0] - 2026-08-19
 
@@ -22,5 +25,6 @@
 
 - 行情源为 Frankfurter / ECB 日频中间价，不含银行牌价。
 
-[Unreleased]: https://github.com/Beicxxxx/fx-sentinel/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Beicxxxx/fx-sentinel/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/Beicxxxx/fx-sentinel/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Beicxxxx/fx-sentinel/releases/tag/v1.0.0

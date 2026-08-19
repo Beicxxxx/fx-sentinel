@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 
+import 'currencies.dart';
 import 'models.dart';
-
-const _host = 'https://api.frankfurter.app';
 
 class RatesException implements Exception {
   RatesException(this.message);
@@ -18,67 +18,112 @@ class RatesClient {
   RatesClient({http.Client? httpClient}) : _http = httpClient ?? http.Client();
   final http.Client _http;
 
-  Future<List<Quote>> fetchWatchlist() async {
+  static const _yahooHeaders = {
+    'User-Agent': 'Mozilla/5.0 fx-sentinel',
+    'Accept': 'application/json',
+  };
+
+  Future<List<Quote>> fetchPairs(List<Pair> pairs) async {
     final out = <Quote>[];
-    for (final pair in watchlist) {
+    for (final pair in pairs) {
       out.add(await fetchPair(pair));
     }
     return out;
   }
 
   Future<Quote> fetchPair(Pair pair) async {
-    final latestUri = Uri.parse('$_host/latest').replace(queryParameters: {
+    final labeled = Pair(pair.base, pair.quote, pairLabel(pair.base, pair.quote));
+    try {
+      return await _yahoo(labeled);
+    } catch (_) {
+      try {
+        return await _frankfurter(labeled);
+      } catch (e) {
+        throw RatesException('无法获取 ${pair.key}：$e');
+      }
+    }
+  }
+
+  Future<Quote> _yahoo(Pair pair) async {
+    final symbol = yahooSymbol(pair);
+    final uri = Uri.parse('https://query1.finance.yahoo.com/v8/finance/chart/$symbol').replace(
+      queryParameters: {'interval': '5m', 'range': '5d'},
+    );
+    final res = await _http.get(uri, headers: _yahooHeaders).timeout(const Duration(seconds: 12));
+    if (res.statusCode != 200) {
+      throw RatesException('Yahoo HTTP ${res.statusCode}');
+    }
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    final err = body['chart']?['error'];
+    if (err != null) {
+      throw RatesException(err.toString());
+    }
+    final results = body['chart']?['result'] as List?;
+    if (results == null || results.isEmpty) {
+      throw RatesException('无行情');
+    }
+    final result = results.first as Map<String, dynamic>;
+    final meta = result['meta'] as Map<String, dynamic>;
+    final price = (meta['regularMarketPrice'] as num?)?.toDouble();
+    if (price == null || price <= 0) {
+      throw RatesException('无有效价格');
+    }
+    final prev = (meta['chartPreviousClose'] as num?)?.toDouble() ??
+        (meta['previousClose'] as num?)?.toDouble();
+    final ts = meta['regularMarketTime'] as int?;
+    final updated = ts == null ? DateTime.now() : DateTime.fromMillisecondsSinceEpoch(ts * 1000);
+    final closes = <double>[];
+    try {
+      final quote = (((result['indicators'] as Map)['quote'] as List).first as Map)['close'] as List;
+      for (final v in quote) {
+        if (v is num) closes.add(v.toDouble());
+      }
+    } catch (_) {}
+    return Quote(
+      pair: pair,
+      rate: price,
+      date: DateFormat('MM-dd HH:mm').format(updated.toLocal()),
+      previous: prev,
+      history: closes.isEmpty ? [price] : closes,
+      source: 'yahoo',
+      updatedAt: updated,
+    );
+  }
+
+  Future<Quote> _frankfurter(Pair pair) async {
+    final latestUri = Uri.parse('https://api.frankfurter.app/latest').replace(queryParameters: {
       'from': pair.base,
       'to': pair.quote,
     });
     final latestRes = await _http.get(latestUri);
     if (latestRes.statusCode != 200) {
-      throw RatesException('行情接口返回 ${latestRes.statusCode}，请稍后重试。');
+      throw RatesException('备源 HTTP ${latestRes.statusCode}');
     }
     final latest = jsonDecode(latestRes.body) as Map<String, dynamic>;
-    final rate = (latest['rates'][pair.quote] as num).toDouble();
-    final date = latest['date'] as String;
-
-    final start = DateTime.now().subtract(const Duration(days: 90));
-    final startStr =
-        '${start.year.toString().padLeft(4, '0')}-${start.month.toString().padLeft(2, '0')}-${start.day.toString().padLeft(2, '0')}';
-    final histUri = Uri.parse('$_host/$startStr..$date').replace(queryParameters: {
-      'from': pair.base,
-      'to': pair.quote,
-    });
-    final histRes = await _http.get(histUri);
-    if (histRes.statusCode != 200) {
-      return Quote(pair: pair, rate: rate, date: date);
+    final rates = latest['rates'] as Map<String, dynamic>?;
+    final raw = rates?[pair.quote];
+    if (raw is! num) {
+      throw RatesException('备源不支持 ${pair.key}');
     }
-    final hist = jsonDecode(histRes.body) as Map<String, dynamic>;
-    final rates = (hist['rates'] as Map<String, dynamic>? ?? {});
-    final keys = rates.keys.toList()..sort();
-    final points = <double>[];
-    for (final k in keys) {
-      final row = rates[k] as Map<String, dynamic>;
-      points.add((row[pair.quote] as num).toDouble());
-    }
-    double? previous;
-    if (points.length >= 2) previous = points[points.length - 2];
     return Quote(
       pair: pair,
-      rate: rate,
-      date: date,
-      previous: previous,
-      history: points,
+      rate: raw.toDouble(),
+      date: latest['date'] as String? ?? '',
+      source: 'ecb',
+      updatedAt: DateTime.tryParse(latest['date'] as String? ?? ''),
     );
   }
 }
 
 Forecast baselineForecast(Quote quote) {
-  final values = quote.history.isEmpty ? [quote.rate] : quote.history;
+  final values = quote.history.where((e) => e > 0).toList();
   if (values.length < 5) {
     return Forecast(
       pair: quote.pair.key,
       direction: 'range',
       confidence: 30,
       predictedChangePct: 0,
-      narrative: '历史样本不足，暂按震荡处理。打开网络拉取 90 日中间价后再试。',
+      narrative: '历史样本不足，暂按震荡处理。',
       risks: const ['数据不足'],
       source: 'baseline',
       lastFmt: formatRate(quote.rate),
@@ -118,11 +163,11 @@ Forecast baselineForecast(Quote quote) {
     confidence: confidence,
     predictedChangePct: double.parse(change.toStringAsFixed(3)),
     narrative:
-        '${quote.pair.key} 近 5 个交易日变动 ${ret5.toStringAsFixed(2)}%，相对 20 日均线 ${vsMa.toStringAsFixed(2)}%。'
-        '日波动约 ${vol.toStringAsFixed(2)}%。规则基线判断未来约 7 日偏向「$dirCn」。'
-        '这是对 ECB 中间价序列的外推，不含银行点差，也不是对新闻的定价。',
+        '${quote.pair.key} 近端变动 ${ret5.toStringAsFixed(2)}%，相对均线 ${vsMa.toStringAsFixed(2)}%。'
+        '波动约 ${vol.toStringAsFixed(2)}%。规则基线判断未来约 7 日偏向「$dirCn」。'
+        '盘中报价来自公开行情源，不是银行成交价。',
     risks: const [
-      '日频中间价不含盘中波动与银行点差',
+      '公开行情可能有延迟，周末与节假日流动性差',
       '利率决议或风险情绪转向会立刻改写方向',
       '震荡市中趋势规则容易来回打脸',
     ],
@@ -151,18 +196,20 @@ Future<Forecast> maybeLlmForecast({
         'role': 'user',
         'content':
             '你是汇率情景解说员。只根据统计做 7 日情景，禁止编造新闻。输出 JSON：direction(up|down|range), confidence(0-100), predicted_change_pct, narrative(中文≤180字), risks(数组)。\n'
-            '货币对 ${quote.pair.key} 现价 ${quote.rate} 日期 ${quote.date} 近5日涨跌 ${quote.changePct}',
+            '货币对 ${quote.pair.key} 现价 ${quote.rate} 时间 ${quote.date} 涨跌 ${quote.changePct}',
       },
     ],
   };
-  final res = await http.post(
-    uri,
-    headers: {
-      'Authorization': 'Bearer $apiKey',
-      'Content-Type': 'application/json',
-    },
-    body: jsonEncode(body),
-  ).timeout(const Duration(seconds: 40));
+  final res = await http
+      .post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $apiKey',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      )
+      .timeout(const Duration(seconds: 40));
   if (res.statusCode < 200 || res.statusCode >= 300) {
     return baseline;
   }

@@ -19,7 +19,8 @@
 
 **做了**
 
-- 七个货币对的中间价、日涨跌、约 90 日折线
+- 订阅任意 ISO 货币对（国旗图标）；盘中报价约 20 秒刷新，失败回退 ECB 日频
+- 应用内检查更新（对照 GitHub Release）
 - 应用内阈值规则（应用在前台时检查）
 - Telegram：`/watch` 预警、`/predict` 7 日情景、进程内轮询推送
 - 无大模型密钥时用均线/波动率规则基线；有 OpenAI 兼容密钥则走模型，失败回退基线
@@ -38,8 +39,10 @@
 ## 安装 App
 
 1. 打开 [Releases](https://github.com/Beicxxxx/fx-sentinel/releases)（私有仓需登录）。
-2. 下载 `fx-sentinel-1.0.0.apk`。
+2. 下载最新 `fx-sentinel-*.apk`。
 3. 手机允许「安装未知应用」后安装。
+
+也可以在 App **设置 → 检查更新**（私有仓需填写 GitHub Token）跳到 Release 页下载。
 
 当前 APK 使用 **调试签名**，只适合本人侧载。从源码打包见 [docs/build.md](docs/build.md)。
 

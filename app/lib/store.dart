@@ -22,6 +22,23 @@ class AlertStore {
   }
 }
 
+class WatchlistStore {
+  static const _key = 'fx_watchlist_v2';
+
+  Future<List<Pair>> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_key);
+    if (raw == null || raw.isEmpty) return List.of(defaultWatchlist);
+    final list = jsonDecode(raw) as List;
+    return list.map((e) => Pair.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<void> save(List<Pair> pairs) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_key, jsonEncode(pairs.map((e) => e.toJson()).toList()));
+  }
+}
+
 class SettingsStore {
   Future<String> getString(String key) async {
     final prefs = await SharedPreferences.getInstance();

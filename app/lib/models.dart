@@ -1,12 +1,20 @@
 class Pair {
-  const Pair(this.base, this.quote, this.label);
+  const Pair(this.base, this.quote, [this.label = '']);
   final String base;
   final String quote;
   final String label;
   String get key => '$base/$quote';
+
+  Map<String, dynamic> toJson() => {'base': base, 'quote': quote};
+
+  factory Pair.fromJson(Map<String, dynamic> json) => Pair(
+        json['base'] as String,
+        json['quote'] as String,
+        json['label'] as String? ?? '',
+      );
 }
 
-const watchlist = <Pair>[
+const defaultWatchlist = <Pair>[
   Pair('USD', 'CNY', '美元 / 人民币'),
   Pair('USD', 'JPY', '美元 / 日元'),
   Pair('EUR', 'USD', '欧元 / 美元'),
@@ -23,6 +31,8 @@ class Quote {
     required this.date,
     this.previous,
     this.history = const [],
+    this.source = 'yahoo',
+    this.updatedAt,
   });
 
   final Pair pair;
@@ -30,6 +40,8 @@ class Quote {
   final String date;
   final double? previous;
   final List<double> history;
+  final String source;
+  final DateTime? updatedAt;
 
   double? get changePct {
     if (previous == null || previous == 0) return null;
@@ -101,3 +113,5 @@ String formatRate(double value) {
   final s = value.toStringAsFixed(6);
   return s.replaceFirst(RegExp(r'\.?0+$'), '');
 }
+
+String yahooSymbol(Pair pair) => '${pair.base}${pair.quote}=X';

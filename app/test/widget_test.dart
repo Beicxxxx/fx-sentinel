@@ -8,8 +8,12 @@ void main() {
     expect(formatRate(147.2), '147.20');
   });
 
+  test('yahoo symbol', () {
+    expect(yahooSymbol(const Pair('USD', 'CNY')), 'USDCNY=X');
+  });
+
   test('baseline forecast follows a climb', () {
-    final pair = watchlist.first;
+    final pair = defaultWatchlist.first;
     final history = [for (var i = 0; i < 30; i++) 7.0 + i * 0.01];
     final quote = Quote(pair: pair, rate: history.last, date: '2026-08-19', history: history);
     final f = baselineForecast(quote);
