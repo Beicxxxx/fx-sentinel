@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'currencies.dart';
 import 'models.dart';
 import 'pair_badge.dart';
+import 'pair_detail_page.dart';
 import 'rates.dart';
 import 'sparkline.dart';
 import 'store.dart';
@@ -257,6 +258,20 @@ class _HomeShellState extends State<HomeShell> {
                       _runForecast();
                     },
                     onAlert: (pair, rate) => _showAddAlert(pair, rate),
+                    onOpen: (q) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => PairDetailPage(
+                            quote: q,
+                            client: _client,
+                            onAlert: () {
+                              Navigator.of(context).pop();
+                              _showAddAlert(q.pair, q.rate);
+                            },
+                          ),
+                        ),
+                      );
+                    },
                     onRemove: _removePair,
                     onAdd: _showAddPair,
                     onOpenUpdate: () {
@@ -577,6 +592,7 @@ class _RatesTab extends StatelessWidget {
     required this.onRetry,
     required this.onForecast,
     required this.onAlert,
+    required this.onOpen,
     required this.onRemove,
     required this.onAdd,
     required this.onOpenUpdate,
@@ -589,6 +605,7 @@ class _RatesTab extends StatelessWidget {
   final VoidCallback onRetry;
   final void Function(Pair) onForecast;
   final void Function(Pair, double) onAlert;
+  final void Function(Quote) onOpen;
   final void Function(Pair) onRemove;
   final VoidCallback onAdd;
   final VoidCallback onOpenUpdate;
@@ -632,7 +649,7 @@ class _RatesTab extends StatelessWidget {
                   ),
                 const Padding(
                   padding: EdgeInsets.only(bottom: 10, left: 4),
-                  child: Text('左滑可取消订阅。报价为公开市场价，非银行柜台成交价。', style: TextStyle(color: _muted, fontSize: 12)),
+                  child: Text('点卡片看走势。左滑取消订阅。公开市场价，非银行成交价。', style: TextStyle(color: _muted, fontSize: 12)),
                 ),
               ],
             );
@@ -652,7 +669,6 @@ class _RatesTab extends StatelessWidget {
             ),
             child: Container(
               margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
               decoration: BoxDecoration(
                 color: _card,
                 borderRadius: BorderRadius.circular(20),
@@ -660,40 +676,57 @@ class _RatesTab extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  Row(
-                    children: [
-                      PairBadge(pair: q.pair),
-                      const SizedBox(width: 12),
-                      Expanded(
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                      onTap: () => onOpen(q),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(q.pair.key, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17, letterSpacing: 0.3)),
-                            Text(pairLabel(q.pair.base, q.pair.quote), style: const TextStyle(color: _muted, fontSize: 12)),
+                            Row(
+                              children: [
+                                PairBadge(pair: q.pair),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(q.pair.key, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17, letterSpacing: 0.3)),
+                                      Text(pairLabel(q.pair.base, q.pair.quote), style: const TextStyle(color: _muted, fontSize: 12)),
+                                    ],
+                                  ),
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(formatRate(q.rate), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, height: 1.1)),
+                                    Text(
+                                      q.changePct == null ? q.date : '${q.changePct! >= 0 ? '+' : ''}${q.changePct!.toStringAsFixed(2)}%',
+                                      style: TextStyle(color: up ? const Color(0xFF3DDC97) : const Color(0xFFFF8A8A), fontSize: 12, fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Sparkline(values: q.history, up: up),
                           ],
                         ),
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(formatRate(q.rate), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, height: 1.1)),
-                          Text(
-                            q.changePct == null ? q.date : '${q.changePct! >= 0 ? '+' : ''}${q.changePct!.toStringAsFixed(2)}%',
-                            style: TextStyle(color: up ? const Color(0xFF3DDC97) : const Color(0xFFFF8A8A), fontSize: 12, fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 10),
-                  Sparkline(values: q.history, up: up),
-                  Row(
-                    children: [
-                      Text(q.source == 'yahoo' ? '实时  ${q.date}' : '日频备源  ${q.date}', style: const TextStyle(color: _muted, fontSize: 11)),
-                      const Spacer(),
-                      TextButton(onPressed: () => onForecast(q.pair), child: const Text('情景')),
-                      TextButton(onPressed: () => onAlert(q.pair, q.rate), child: const Text('预警')),
-                    ],
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+                    child: Row(
+                      children: [
+                        Text(q.source == 'yahoo' ? '实时  ${q.date}' : '日频备源  ${q.date}', style: const TextStyle(color: _muted, fontSize: 11)),
+                        const Spacer(),
+                        TextButton(onPressed: () => onForecast(q.pair), child: const Text('情景')),
+                        TextButton(onPressed: () => onAlert(q.pair, q.rate), child: const Text('预警')),
+                      ],
+                    ),
                   ),
                 ],
               ),

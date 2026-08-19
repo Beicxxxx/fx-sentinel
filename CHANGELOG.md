@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-19
+
+### 新增
+
+- 扁平圆形国旗（circle-flags）。
+- Revolut 风格走势详情页：大字报价、平滑面积图、1D–All 时段。
+
 ## [1.1.0] - 2026-08-19
 
 ### 新增
@@ -25,6 +32,7 @@
 
 - 行情源为 Frankfurter / ECB 日频中间价，不含银行牌价。
 
-[Unreleased]: https://github.com/Beicxxxx/fx-sentinel/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/Beicxxxx/fx-sentinel/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/Beicxxxx/fx-sentinel/releases/tag/v1.2.0
 [1.1.0]: https://github.com/Beicxxxx/fx-sentinel/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Beicxxxx/fx-sentinel/releases/tag/v1.0.0

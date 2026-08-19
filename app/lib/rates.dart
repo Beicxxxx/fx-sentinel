@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
+import 'chart_range.dart';
 import 'currencies.dart';
 import 'models.dart';
 
@@ -34,7 +35,7 @@ class RatesClient {
   Future<Quote> fetchPair(Pair pair) async {
     final labeled = Pair(pair.base, pair.quote, pairLabel(pair.base, pair.quote));
     try {
-      return await _yahoo(labeled);
+      return await _yahoo(labeled, ChartRange.w1);
     } catch (_) {
       try {
         return await _frankfurter(labeled);
@@ -44,10 +45,26 @@ class RatesClient {
     }
   }
 
-  Future<Quote> _yahoo(Pair pair) async {
+  Future<ChartSeries> fetchChart(Pair pair, ChartRange range) async {
+    final q = await _yahoo(pair, range);
+    return ChartSeries(
+      values: _downsample(q.history, 160),
+      last: q.rate,
+      previousClose: q.previous,
+    );
+  }
+
+  List<double> _downsample(List<double> input, int maxPoints) {
+    final clean = input.where((e) => e > 0).toList();
+    if (clean.length <= maxPoints) return clean;
+    final step = clean.length / maxPoints;
+    return [for (var i = 0; i < maxPoints; i++) clean[(i * step).floor()]];
+  }
+
+  Future<Quote> _yahoo(Pair pair, ChartRange range) async {
     final symbol = yahooSymbol(pair);
     final uri = Uri.parse('https://query1.finance.yahoo.com/v8/finance/chart/$symbol').replace(
-      queryParameters: {'interval': '5m', 'range': '5d'},
+      queryParameters: {'interval': range.interval, 'range': range.yahooRange},
     );
     final res = await _http.get(uri, headers: _yahooHeaders).timeout(const Duration(seconds: 12));
     if (res.statusCode != 200) {

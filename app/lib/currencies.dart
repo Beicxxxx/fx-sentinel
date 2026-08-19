@@ -73,6 +73,45 @@ CurrencyInfo? currencyOf(String code) {
   return null;
 }
 
+String currencySymbol(String code) {
+  switch (code.toUpperCase()) {
+    case 'USD':
+      return '\$';
+    case 'CNY':
+    case 'CNH':
+    case 'JPY':
+      return '¥';
+    case 'EUR':
+      return '€';
+    case 'GBP':
+      return '£';
+    case 'KRW':
+      return '₩';
+    case 'HKD':
+      return 'HK\$';
+    case 'AUD':
+      return 'A\$';
+    case 'CAD':
+      return 'C\$';
+    case 'SGD':
+      return 'S\$';
+    case 'TWD':
+      return 'NT\$';
+    case 'THB':
+      return '฿';
+    case 'INR':
+      return '₹';
+    case 'RUB':
+      return '₽';
+    case 'TRY':
+      return '₺';
+    case 'CHF':
+      return 'Fr';
+    default:
+      return '';
+  }
+}
+
 String pairLabel(String base, String quote) {
   final a = currencyOf(base)?.nameZh ?? base;
   final b = currencyOf(quote)?.nameZh ?? quote;
