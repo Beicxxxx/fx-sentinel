@@ -4,7 +4,8 @@
 
 | | |
 |---|---|
-| 仓库 | https://github.com/Beicxxxx/fx-sentinel |
+| 仓库 | https://github.com/Beicxxxx/fx-sentinel （主仓） |
+| Origin | 应对齐为 `beichen-li/fx-sentinel`，见 [docs/remotes.md](docs/remotes.md) |
 | 当前版本 | [v1.0.0](https://github.com/Beicxxxx/fx-sentinel/releases/tag/v1.0.0) |
 | 平台 | Android 8+（App）、Python 3.12+（机器人） |
 | 行情 | [Frankfurter](https://www.frankfurter.app/)（欧洲央行日频中间价） |

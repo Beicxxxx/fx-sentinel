@@ -8,6 +8,7 @@
 ### 文档
 
 - 补齐 README、许可证、架构说明与发布流程。
+- 约定 GitHub `Beicxxxx/fx-sentinel` 为主仓；Origin 仓库名应对齐为 `fx-sentinel`。
 
 ## [1.0.0] - 2026-08-19
 
