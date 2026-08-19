@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'currencies.dart';
+import 'installer.dart';
 import 'models.dart';
 import 'pair_badge.dart';
 import 'pair_detail_page.dart';
@@ -82,7 +83,6 @@ class _HomeShellState extends State<HomeShell> {
   String apiKey = '';
   String apiBase = '';
   String model = '';
-  String ghToken = '';
 
   @override
   void initState() {
@@ -102,13 +102,12 @@ class _HomeShellState extends State<HomeShell> {
     apiKey = await _settings.getString('api_key');
     apiBase = await _settings.getString('api_base');
     model = await _settings.getString('model');
-    ghToken = await _settings.getString('gh_token');
     _alerts = await _alertStore.load();
     _watch = await _watchStore.load();
     final info = await PackageInfo.fromPlatform();
     _appVersion = '${info.version} (${info.buildNumber})';
     await _refresh();
-    final upd = await checkForUpdate(githubToken: ghToken);
+    final upd = await checkForUpdate();
     if (mounted) setState(() => _update = upd);
   }
 
@@ -193,7 +192,7 @@ class _HomeShellState extends State<HomeShell> {
   Future<void> _manualUpdateCheck() async {
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(const SnackBar(content: Text('正在检查更新…')));
-    final upd = await checkForUpdate(githubToken: ghToken);
+    final upd = await checkForUpdate();
     if (!mounted) return;
     setState(() => _update = upd);
     if (upd.error != null && !upd.hasUpdate) {
@@ -213,16 +212,15 @@ class _HomeShellState extends State<HomeShell> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('发现新版本'),
-        content: Text('当前 ${upd.current}，最新 ${upd.latest}。\n打开 Release 下载 APK 后在本地安装即可。'),
+        content: Text('当前 ${upd.current}，最新 ${upd.latest}。\n将在应用内下载 APK 并调起系统安装器。'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('稍后')),
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
-              final uri = upd.releaseUrl ?? Uri.parse('https://github.com/$githubRepo/releases');
-              launchUrl(uri, mode: LaunchMode.externalApplication);
+              downloadAndInstall(context, upd);
             },
-            child: const Text('去下载'),
+            child: const Text('立即更新'),
           ),
         ],
       ),
@@ -313,20 +311,17 @@ class _HomeShellState extends State<HomeShell> {
                     apiKey: apiKey,
                     apiBase: apiBase,
                     model: model,
-                    ghToken: ghToken,
                     appVersion: _appVersion,
                     onCheckUpdate: _manualUpdateCheck,
-                    onSave: (tg, key, base, mdl, gh) async {
+                    onSave: (tg, key, base, mdl) async {
                       telegramUser = tg;
                       apiKey = key;
                       apiBase = base;
                       model = mdl;
-                      ghToken = gh;
                       await _settings.setString('tg_user', tg);
                       await _settings.setString('api_key', key);
                       await _settings.setString('api_base', base);
                       await _settings.setString('model', mdl);
-                      await _settings.setString('gh_token', gh);
                       if (!context.mounted) return;
                       setState(() {});
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已保存。')));
@@ -875,7 +870,6 @@ class _SettingsTab extends StatefulWidget {
     required this.apiKey,
     required this.apiBase,
     required this.model,
-    required this.ghToken,
     required this.appVersion,
     required this.onCheckUpdate,
     required this.onSave,
@@ -885,10 +879,9 @@ class _SettingsTab extends StatefulWidget {
   final String apiKey;
   final String apiBase;
   final String model;
-  final String ghToken;
   final String appVersion;
   final VoidCallback onCheckUpdate;
-  final void Function(String, String, String, String, String) onSave;
+  final void Function(String, String, String, String) onSave;
 
   @override
   State<_SettingsTab> createState() => _SettingsTabState();
@@ -899,7 +892,6 @@ class _SettingsTabState extends State<_SettingsTab> {
   late final _key = TextEditingController(text: widget.apiKey);
   late final _base = TextEditingController(text: widget.apiBase);
   late final _model = TextEditingController(text: widget.model.isEmpty ? 'gpt-4o-mini' : widget.model);
-  late final _gh = TextEditingController(text: widget.ghToken);
 
   @override
   void dispose() {
@@ -907,7 +899,6 @@ class _SettingsTabState extends State<_SettingsTab> {
     _key.dispose();
     _base.dispose();
     _model.dispose();
-    _gh.dispose();
     super.dispose();
   }
 
@@ -920,12 +911,6 @@ class _SettingsTabState extends State<_SettingsTab> {
         const SizedBox(height: 6),
         Text('当前版本 ${widget.appVersion}', style: const TextStyle(color: _muted, fontSize: 12)),
         const SizedBox(height: 8),
-        TextField(
-          controller: _gh,
-          obscureText: true,
-          decoration: const InputDecoration(hintText: 'GitHub Token（私有仓检查 Release 必填）'),
-        ),
-        const SizedBox(height: 10),
         FilledButton.tonal(onPressed: widget.onCheckUpdate, child: const Text('检查更新')),
         const SizedBox(height: 20),
         const Text('机器人用户名', style: TextStyle(fontWeight: FontWeight.w700)),
@@ -941,7 +926,7 @@ class _SettingsTabState extends State<_SettingsTab> {
         TextField(controller: _model, decoration: const InputDecoration(hintText: '模型名')),
         const SizedBox(height: 16),
         FilledButton(
-          onPressed: () => widget.onSave(_tg.text.trim(), _key.text.trim(), _base.text.trim(), _model.text.trim(), _gh.text.trim()),
+          onPressed: () => widget.onSave(_tg.text.trim(), _key.text.trim(), _base.text.trim(), _model.text.trim()),
           child: const Text('保存设置'),
         ),
         const SizedBox(height: 20),

@@ -6,6 +6,9 @@
 - **禁止把 GitHub PAT、Bot token 发到聊天、Issue、截图。** 一旦发出去，立即在颁发方作废并换新。
 - App 设置里的大模型密钥存在手机本地 `SharedPreferences`，卸载即失，也不会上传到本仓库的服务器（v1 没有自建后端）。
 
+- 检查更新走公开 GitHub Release API，无需 Token。
+- 应用内下载 APK 后调起系统安装器（需用户允许安装未知应用）。
+
 ## 安装包
 
 - Release 里的 APK 为调试签名，仅本人侧载。

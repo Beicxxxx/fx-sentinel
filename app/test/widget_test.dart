@@ -1,11 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fx_sentinel/models.dart';
 import 'package:fx_sentinel/rates.dart';
+import 'package:fx_sentinel/updates.dart';
 
 void main() {
   test('formatRate trims extra zeros', () {
     expect(formatRate(7.2), '7.2');
     expect(formatRate(147.2), '147.20');
+  });
+
+  test('version compare', () {
+    expect(compareVersions('1.3.0', '1.2.0'), greaterThan(0));
+    expect(compareVersions('v1.2.0', '1.2.0'), 0);
   });
 
   test('yahoo symbol', () {

@@ -8,7 +8,7 @@
 手机 App (Flutter)
   ├─ HTTPS → Yahoo Finance chart     盘中报价（约 1–5 分钟级）
   ├─ HTTPS → api.frankfurter.app     失败时的 ECB 日频备源
-  ├─ HTTPS → api.github.com          检查最新 Release
+  ├─ HTTPS → api.github.com          公开检查 Release，应用内下载 APK
   ├─ 本机 SharedPreferences          订阅列表、预警、可选 Token
   └─ 前台约 20 秒刷新并本地判定阈值
 

@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-08-19
+
+### 变更
+
+- 公开仓检查更新，不再需要 GitHub Token。
+- 发现新版本后在应用内下载 APK 并调起系统安装。
+
 ## [1.2.0] - 2026-08-19
 
 ### 新增
@@ -32,7 +39,8 @@
 
 - 行情源为 Frankfurter / ECB 日频中间价，不含银行牌价。
 
-[Unreleased]: https://github.com/Beicxxxx/fx-sentinel/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/Beicxxxx/fx-sentinel/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/Beicxxxx/fx-sentinel/releases/tag/v1.3.0
 [1.2.0]: https://github.com/Beicxxxx/fx-sentinel/releases/tag/v1.2.0
 [1.1.0]: https://github.com/Beicxxxx/fx-sentinel/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Beicxxxx/fx-sentinel/releases/tag/v1.0.0
