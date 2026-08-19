@@ -1,0 +1,30 @@
+name: fx_sentinel
+description: 汇率哨兵 —— ECB 中间价看板、阈值预警说明与 7 日情景预测。
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.5.0
+  intl: ^0.20.2
+  shared_preferences: ^2.5.3
+  url_launcher: ^6.3.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: SarasaUiK
+      fonts:
+        - asset: fonts/SarasaUiK-Regular.ttf
+          weight: 400
+        - asset: fonts/SarasaUiK-Bold.ttf
+          weight: 700
