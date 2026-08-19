@@ -15,7 +15,11 @@
 
 ## 安装安卓包
 
-已安装 Flutter 与 Android SDK 时：
+直接下 **[Releases](https://github.com/Beicxxxx/fx-sentinel/releases)** 里的 `fx-sentinel-1.0.0.apk`，传到手机后允许「未知来源」再安装。
+
+仓库是私有的，只有你（以及你授权的人）能看到这个安装包。当前包用的是调试签名，只适合自己装，不能上 Google Play。
+
+自己从源码打包：
 
 ```bash
 export PATH="$HOME/flutter/bin:$PATH"
@@ -25,7 +29,7 @@ flutter pub get
 flutter build apk --release
 ```
 
-APK 在 `app/build/app/outputs/flutter-apk/app-release.apk`。传到手机直接安装。
+产物在 `app/build/app/outputs/flutter-apk/app-release.apk`。
 
 ## 跑 Telegram 机器人
 
