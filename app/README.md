@@ -1,17 +1,15 @@
-# fx_sentinel
+# 安卓客户端
 
-A new Flutter project.
+Flutter 应用，包名 `com.fxsentinel.fx_sentinel`。
 
-## Getting Started
+```bash
+cd app
+flutter pub get
+flutter test
+flutter run   # 需连接设备或模拟器
+flutter build apk --release
+```
 
-This project is a starting point for a Flutter application.
+界面字体为更纱黑体 UI K 子集，声明见仓库根目录 [NOTICE](../NOTICE)。
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Linux 桌面目标仅用于无手机时预览同一套 Dart UI，不是产品形态。

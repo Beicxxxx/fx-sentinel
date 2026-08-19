@@ -1,0 +1,11 @@
+# 第三方声明
+
+本仓库代码以 MIT 许可，见 [LICENSE](LICENSE)。
+
+界面嵌入的 **更纱黑体 UI K**（Sarasa Gothic UI K）子集来自
+[be5invis/Sarasa-Gothic](https://github.com/be5invis/Sarasa-Gothic)，
+采用 SIL Open Font License 1.1。完整条文见 [app/fonts/OFL.txt](app/fonts/OFL.txt)
+与 [third_party/fonts/OFL.txt](third_party/fonts/OFL.txt)。
+
+子集仅覆盖应用文案用到的字符，不是完整字库。地区码 `K` 表示韩文地区汉字习惯，
+与简体中文国标字形可能不一致。

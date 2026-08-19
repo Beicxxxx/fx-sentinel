@@ -1,89 +1,106 @@
-# 汇率哨兵
+# 汇率哨兵（fx-sentinel）
 
-主仓库：[github.com/Beicxxxx/fx-sentinel](https://github.com/Beicxxxx/fx-sentinel)（个人号，后期维护以这份为准）。
+个人用的汇率盯盘工具：**安卓客户端**看 ECB 中间价并做情景推演，**Telegram 机器人**负责阈值预警推送。
 
-安卓 App + Telegram 机器人：盯 **ECB 日频中间价**、设阈值预警、用规则或大模型做 **7 日情景**（不是成交建议）。
-
-第一期不做网页、不做中行/汇丰牌价、不做系统推送。预警靠 Telegram；App 负责看盘和预测。
-
-## 你需要什么
-
-- 安卓手机（Android 8+）
-- 一台能联网的电脑跑机器人（预警才稳）
-- Telegram 账号，向 [@BotFather](https://t.me/BotFather) 申请 bot token
-- 可选：`OPENAI_API_KEY`（或兼容网关）。不填则预测走均线规则
-
-## 安装安卓包
-
-直接下 **[Releases](https://github.com/Beicxxxx/fx-sentinel/releases)** 里的 `fx-sentinel-1.0.0.apk`，传到手机后允许「未知来源」再安装。
-
-仓库是私有的，只有你（以及你授权的人）能看到这个安装包。当前包用的是调试签名，只适合自己装，不能上 Google Play。
-
-自己从源码打包：
-
-```bash
-export PATH="$HOME/flutter/bin:$PATH"
-export ANDROID_HOME="$HOME/android-sdk"
-cd app
-flutter pub get
-flutter build apk --release
-```
-
-产物在 `app/build/app/outputs/flutter-apk/app-release.apk`。
-
-## 跑 Telegram 机器人
-
-```bash
-cd bot
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp ../.env.example ../.env   # 填入 TELEGRAM_BOT_TOKEN
-set -a && source ../.env && set +a
-python main.py
-```
-
-在 Telegram 里找到你的机器人：
-
-| 命令 | 作用 |
+| | |
 |---|---|
-| `/start` | 绑定当前聊天，预警推到这里 |
+| 仓库 | https://github.com/Beicxxxx/fx-sentinel |
+| 当前版本 | [v1.0.0](https://github.com/Beicxxxx/fx-sentinel/releases/tag/v1.0.0) |
+| 平台 | Android 8+（App）、Python 3.12+（机器人） |
+| 行情 | [Frankfurter](https://www.frankfurter.app/)（欧洲央行日频中间价） |
+| 许可 | 代码 [MIT](LICENSE)；界面字体 [SIL OFL 1.1](NOTICE) |
+
+**这不是交易软件。** 预测与预警仅供自己对照，不构成投资、换汇或任何交易建议。中间价不是银行柜台成交价。
+
+---
+
+## 功能与边界
+
+**做了**
+
+- 七个货币对的中间价、日涨跌、约 90 日折线
+- 应用内阈值规则（应用在前台时检查）
+- Telegram：`/watch` 预警、`/predict` 7 日情景、进程内轮询推送
+- 无大模型密钥时用均线/波动率规则基线；有 OpenAI 兼容密钥则走模型，失败回退基线
+
+**明确不做（v1）**
+
+- 网页、登录、数据库
+- 中行 / 汇丰等银行牌价
+- 系统级推送（FCM）；休眠后的可靠提醒只走 Telegram
+- Google Play 上架签名
+
+更细的设计见 [docs/architecture.md](docs/architecture.md)。
+
+---
+
+## 安装 App
+
+1. 打开 [Releases](https://github.com/Beicxxxx/fx-sentinel/releases)（私有仓需登录）。
+2. 下载 `fx-sentinel-1.0.0.apk`。
+3. 手机允许「安装未知应用」后安装。
+
+当前 APK 使用 **调试签名**，只适合本人侧载。从源码打包见 [docs/build.md](docs/build.md)。
+
+---
+
+## 运行 Telegram 机器人
+
+预警要有一台一直联网的机器跑进程。Token 只放在本地 `.env`，不要提交、不要发到聊天。
+
+```bash
+git clone https://github.com/Beicxxxx/fx-sentinel.git
+cd fx-sentinel
+python3 -m venv bot/.venv
+source bot/.venv/bin/activate
+pip install -r bot/requirements.txt
+cp .env.example .env   # 编辑 TELEGRAM_BOT_TOKEN
+set -a && source .env && set +a
+cd bot && python main.py
+```
+
+向 [@BotFather](https://t.me/BotFather) 申请机器人后，在对话里发送：
+
+| 命令 | 说明 |
+|---|---|
+| `/start` | 绑定当前 chat，之后预警推到这里 |
 | `/rates` | 关注列表中间价 |
-| `/watch USD/CNY below 7.10` | 低于阈值提醒 |
-| `/watch EUR/USD above 1.18` | 高于阈值提醒 |
-| `/list` `/unwatch <id>` | 查看 / 删除 |
+| `/watch USD/CNY below 7.10` | 低于阈值时提醒 |
+| `/watch EUR/USD above 1.18` | 高于阈值时提醒 |
+| `/list` / `/unwatch <id>` | 列出 / 删除规则 |
 | `/predict USD/CNY` | 7 日情景 |
+| `/help` | 命令说明 |
 
-进程要一直开着。关掉电脑就不会推。可把 `python main.py` 放到 systemd / 开机脚本。
+环境变量说明见 [.env.example](.env.example)。命令细节见 [docs/telegram.md](docs/telegram.md)。
 
-## App 里怎么用
-
-1. **行情**：七个主要货币对、涨跌、90 日折线  
-2. **预警**：可在手机里加规则（前台会检查）；休眠后不可靠，请用 Telegram `/watch`  
-3. **预测**：规则基线；设置页填了 Key 则走大模型，失败回退基线  
-4. **设置**：填机器人用户名（不含 `t.me`），方便跳转
-
-## 字体
-
-界面使用 **更纱黑体 UI K**（官方地区码是 `K`，即韩文地区汉字，对应你说的 KR）。授权 [SIL OFL 1.1](app/fonts/OFL.txt)，已按界面用字做子集。
-
-K 字形按韩国汉字习惯，部分简体字观感会和国标不一样。若要更贴简体，以后可换成 `SarasaUiSC`。
-
-## 数据与免责
-
-- 行情：[Frankfurter](https://www.frankfurter.app/) 转欧洲央行参考价，通常滞后约一个交易日，**不是**汇丰/中行买卖价  
-- 预测只吃价序列，不编新闻；**不构成投资或换汇建议**
+---
 
 ## 仓库结构
 
 ```
-app/     Flutter（Android 为主，Linux 仅供本机预览同一套界面）
-bot/     Telegram 机器人
-scripts/ 字体子集
+app/                 Flutter 安卓客户端（Linux 仅用于同一套 UI 的本机预览）
+bot/                 Telegram 机器人与行情/预警/预测逻辑
+docs/                架构、构建、Telegram、安全
+scripts/             字体子集等辅助脚本
+third_party/fonts/   字体许可文本
 ```
 
-克隆主仓：
+---
+
+## 开发
 
 ```bash
-git clone https://github.com/Beicxxxx/fx-sentinel.git
+# 机器人单测
+cd bot && PYTHONPATH=. python3 -m unittest discover -s tests -v
+
+# 客户端
+cd app && flutter test && flutter analyze
 ```
+
+发布流程见 [docs/build.md](docs/build.md)。协作约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+
+---
+
+## 免责声明
+
+行情来自欧洲央行参考价，通常滞后约一个交易日，不含银行点差与盘中 Tick。大模型输出禁止当作新闻或机构观点。使用本工具的任何换汇或交易决策由你自己承担。

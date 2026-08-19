@@ -1,0 +1,27 @@
+name: Bug
+description: 行情、预警、预测或安装问题
+title: "[bug] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: 这是个人项目。提交前请确认不是 Frankfurter 节假日停更，也不是手机休眠导致应用内预警没响（请改用 Telegram）。
+  - type: textarea
+    id: what
+    attributes:
+      label: 发生了什么
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: 出现位置
+      options:
+        - 安卓 App
+        - Telegram 机器人
+        - 构建 / Release APK
+  - type: input
+    id: version
+    attributes:
+      label: 版本
+      placeholder: v1.0.0 / 构建日期
