@@ -7,12 +7,14 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'currencies.dart';
 import 'installer.dart';
+import 'model_presets.dart';
 import 'models.dart';
 import 'pair_badge.dart';
 import 'pair_detail_page.dart';
 import 'rates.dart';
 import 'sparkline.dart';
 import 'store.dart';
+import 'trend_chart.dart';
 import 'updates.dart';
 
 void main() {
@@ -75,6 +77,7 @@ class _HomeShellState extends State<HomeShell> {
   Forecast? _forecast;
   bool _forecasting = false;
   Pair? _forecastPair;
+  int _horizonDays = 7;
   Timer? _timer;
   UpdateCheck? _update;
   String _appVersion = '';
@@ -161,16 +164,12 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   Future<void> _runForecast() async {
-    var pair = _forecastPair ?? (_watch.isEmpty ? null : _watch.first);
+    final pair = _forecastPair ?? (_watch.isEmpty ? null : _watch.first);
     if (pair == null) return;
-    Quote? quote;
-    for (final q in _quotes) {
-      if (q.pair.key == pair.key) quote = q;
-    }
     setState(() => _forecasting = true);
     try {
-      quote ??= await _client.fetchPair(pair);
-      final baseline = baselineForecast(quote);
+      final quote = await _client.fetchForForecast(pair, _horizonDays);
+      final baseline = baselineForecast(quote, horizonDays: _horizonDays);
       final result = await maybeLlmForecast(
         quote: quote,
         baseline: baseline,
@@ -300,9 +299,11 @@ class _HomeShellState extends State<HomeShell> {
                   _ForecastTab(
                     pair: _forecastPair ?? (_watch.isEmpty ? defaultWatchlist.first : _watch.first),
                     pairs: _watch,
+                    horizonDays: _horizonDays,
                     forecasting: _forecasting,
                     forecast: _forecast,
                     onPick: (p) => setState(() => _forecastPair = p),
+                    onHorizon: (days) => setState(() => _horizonDays = days),
                     onRun: _runForecast,
                     hasKey: apiKey.trim().isNotEmpty,
                   ),
@@ -801,18 +802,22 @@ class _ForecastTab extends StatelessWidget {
   const _ForecastTab({
     required this.pair,
     required this.pairs,
+    required this.horizonDays,
     required this.forecasting,
     required this.forecast,
     required this.onPick,
+    required this.onHorizon,
     required this.onRun,
     required this.hasKey,
   });
 
   final Pair pair;
   final List<Pair> pairs;
+  final int horizonDays;
   final bool forecasting;
   final Forecast? forecast;
   final void Function(Pair) onPick;
+  final void Function(int) onHorizon;
   final VoidCallback onRun;
   final bool hasKey;
 
@@ -820,11 +825,15 @@ class _ForecastTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final f = forecast;
     final dir = f == null ? '' : {'up': '上行', 'down': '下行', 'range': '震荡'}[f.direction] ?? f.direction;
+    final src = f == null ? '' : (f.source == 'llm' ? '大模型情景' : '规则基线');
     final options = pairs.isEmpty ? defaultWatchlist : pairs;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       children: [
-        Text(hasKey ? '将调用你配置的大模型；失败时回退规则基线。' : '未配置密钥，使用规则基线。', style: const TextStyle(color: _muted, fontSize: 12)),
+        Text(
+          hasKey ? '没有汇率专用大模型。通用模型只解说统计，失败时回退规则基线。' : '未配置密钥，使用规则基线。没有能保证准的汇率专用模型。',
+          style: const TextStyle(color: _muted, fontSize: 12, height: 1.4),
+        ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
           initialValue: options.any((p) => p.key == pair.key) ? pair.key : options.first.key,
@@ -838,28 +847,145 @@ class _ForecastTab extends StatelessWidget {
           },
         ),
         const SizedBox(height: 12),
-        FilledButton(onPressed: forecasting ? null : onRun, child: Text(forecasting ? '正在推演…' : '生成 7 日情景')),
+        Row(
+          children: [
+            _HorizonChip(label: '7 日', selected: horizonDays == 7, onTap: () => onHorizon(7)),
+            const SizedBox(width: 8),
+            _HorizonChip(label: '30 日', selected: horizonDays == 30, onTap: () => onHorizon(30)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        FilledButton(
+          onPressed: forecasting ? null : onRun,
+          child: Text(forecasting ? '正在推演…' : '生成 $horizonDays 日情景'),
+        ),
         const SizedBox(height: 16),
         if (forecasting) const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(color: _accent))),
-        if (f != null && !forecasting)
+        if (f != null && !forecasting) ...[
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
             decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(16), border: Border.all(color: _line)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${f.pair} · $dir', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 6),
-                Text('置信度 ${f.confidence}%　预估 ${f.predictedChangePct >= 0 ? '+' : ''}${f.predictedChangePct.toStringAsFixed(2)}%　现价 ${f.lastFmt}', style: const TextStyle(color: _accent)),
-                const SizedBox(height: 12),
-                Text(f.narrative, style: const TextStyle(height: 1.45)),
-                const SizedBox(height: 12),
-                const Text('仅供学习研究，不构成投资、换汇或交易建议。', style: TextStyle(color: _muted, fontSize: 12)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text('${f.pair} · ${f.horizonDays} 日$dir', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+                  child: Text(
+                    '$src　置信度 ${f.confidence}%　预估 ${f.predictedChangePct >= 0 ? '+' : ''}${f.predictedChangePct.toStringAsFixed(2)}%　现价 ${f.lastFmt}',
+                    style: const TextStyle(color: _accent, fontSize: 13),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TrendChart(
+                  values: f.chartValues,
+                  up: f.predictedChangePct >= 0,
+                  height: 220,
+                  splitAt: f.splitAt,
+                  bandHigh: f.chartBandHigh,
+                  bandLow: f.chartBandLow,
+                ),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(8, 4, 8, 8),
+                  child: Text('实线为历史，虚线为情景中线，阴影为波动外推带。', style: TextStyle(color: _muted, fontSize: 11)),
+                ),
               ],
             ),
           ),
-        if (f == null && !forecasting) const _Empty(title: '还没有情景', detail: '选一个已订阅货币对生成 7 日情景。'),
+          const SizedBox(height: 12),
+          _SectionCard(
+            title: '预测分析',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(f.narrative, style: const TextStyle(height: 1.45)),
+                const SizedBox(height: 10),
+                for (final line in f.analysis)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('·  ', style: TextStyle(color: _accent)),
+                        Expanded(child: Text(line, style: const TextStyle(height: 1.35, fontSize: 13))),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _SectionCard(title: '偏多情景', child: Text(f.bullCase, style: const TextStyle(height: 1.4, fontSize: 13)))),
+              const SizedBox(width: 10),
+              Expanded(child: _SectionCard(title: '偏空情景', child: Text(f.bearCase, style: const TextStyle(height: 1.4, fontSize: 13)))),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _SectionCard(
+            title: '主要风险',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final line in f.risks)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text('· $line', style: const TextStyle(height: 1.35, fontSize: 13)),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text('仅供学习研究，不构成投资、换汇或交易建议。阴影区间不是保证。', style: TextStyle(color: _muted, fontSize: 12, height: 1.4)),
+        ],
+        if (f == null && !forecasting) const _Empty(title: '还没有情景', detail: '选货币对，再选 7 日或 30 日，生成走势与分析。'),
       ],
+    );
+  }
+}
+
+class _HorizonChip extends StatelessWidget {
+  const _HorizonChip({required this.label, required this.selected, required this.onTap});
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onTap(),
+      selectedColor: const Color(0xFF1E4A42),
+      labelStyle: TextStyle(color: selected ? _accent : _muted, fontWeight: FontWeight.w700),
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.title, required this.child});
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(16), border: Border.all(color: _line)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          child,
+        ],
+      ),
     );
   }
 }
@@ -902,6 +1028,13 @@ class _SettingsTabState extends State<_SettingsTab> {
     super.dispose();
   }
 
+  String _modelHint() {
+    for (final p in modelPresets) {
+      if (p.model == _model.text && p.baseUrl == _base.text) return p.hint;
+    }
+    return '也可手填任意 OpenAI 兼容网关。';
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView(
@@ -919,9 +1052,32 @@ class _SettingsTabState extends State<_SettingsTab> {
         const SizedBox(height: 14),
         const Text('大模型（可选）', style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
-        TextField(controller: _key, obscureText: true, decoration: const InputDecoration(hintText: 'OPENAI_API_KEY')),
+        const Text(
+          '市面上没有可靠的「汇率专用大模型」。下面都是通用对话模型，用来把统计写成中文情景，不能当交易信号。',
+          style: TextStyle(color: _muted, fontSize: 12, height: 1.4),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final p in modelPresets)
+              ActionChip(
+                label: Text(p.label),
+                onPressed: () {
+                  _model.text = p.model;
+                  _base.text = p.baseUrl;
+                  setState(() {});
+                },
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(_modelHint(), style: const TextStyle(color: _muted, fontSize: 12)),
         const SizedBox(height: 8),
-        TextField(controller: _base, decoration: const InputDecoration(hintText: '兼容网关')),
+        TextField(controller: _key, obscureText: true, decoration: const InputDecoration(hintText: 'API Key')),
+        const SizedBox(height: 8),
+        TextField(controller: _base, decoration: const InputDecoration(hintText: '兼容网关 Base URL')),
         const SizedBox(height: 8),
         TextField(controller: _model, decoration: const InputDecoration(hintText: '模型名')),
         const SizedBox(height: 16),

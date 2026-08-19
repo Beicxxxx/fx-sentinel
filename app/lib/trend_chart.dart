@@ -13,6 +13,9 @@ class TrendChart extends StatelessWidget {
     this.height = 260,
     this.showGrid = true,
     this.strokeWidth = 2.4,
+    this.splitAt,
+    this.bandHigh = const [],
+    this.bandLow = const [],
   });
 
   final List<double> values;
@@ -21,6 +24,9 @@ class TrendChart extends StatelessWidget {
   final double height;
   final bool showGrid;
   final double strokeWidth;
+  final int? splitAt;
+  final List<double> bandHigh;
+  final List<double> bandLow;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +44,9 @@ class TrendChart extends StatelessWidget {
           baseline: baseline,
           showGrid: showGrid,
           strokeWidth: strokeWidth,
+          splitAt: splitAt,
+          bandHigh: bandHigh,
+          bandLow: bandLow,
         ),
       ),
     );
@@ -51,6 +60,9 @@ class _TrendPainter extends CustomPainter {
     required this.baseline,
     required this.showGrid,
     required this.strokeWidth,
+    required this.splitAt,
+    required this.bandHigh,
+    required this.bandLow,
   });
 
   final List<double> values;
@@ -58,6 +70,9 @@ class _TrendPainter extends CustomPainter {
   final double? baseline;
   final bool showGrid;
   final double strokeWidth;
+  final int? splitAt;
+  final List<double> bandHigh;
+  final List<double> bandLow;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -68,6 +83,12 @@ class _TrendPainter extends CustomPainter {
     if (baseline != null) {
       lo = math.min(lo, baseline!);
       hi = math.max(hi, baseline!);
+    }
+    if (bandHigh.length == values.length) {
+      hi = math.max(hi, bandHigh.reduce(math.max));
+    }
+    if (bandLow.length == values.length) {
+      lo = math.min(lo, bandLow.reduce(math.min));
     }
     final span = (hi - lo).abs() < 1e-12 ? 1.0 : hi - lo;
     final padY = size.height * 0.08;
@@ -97,9 +118,25 @@ class _TrendPainter extends CustomPainter {
     }
 
     final points = [for (var i = 0; i < values.length; i++) pt(i, values[i])];
-    final line = _smooth(points);
+    final cut = splitAt ?? -1;
+    final hasForecast = cut > 0 && cut < values.length - 1;
+
+    if (hasForecast && bandHigh.length == values.length && bandLow.length == values.length) {
+      final cone = Path()..moveTo(points[cut].dx, pt(cut, bandHigh[cut]).dy);
+      for (var i = cut; i < values.length; i++) {
+        cone.lineTo(points[i].dx, pt(i, bandHigh[i]).dy);
+      }
+      for (var i = values.length - 1; i >= cut; i--) {
+        cone.lineTo(points[i].dx, pt(i, bandLow[i]).dy);
+      }
+      cone.close();
+      canvas.drawPath(cone, Paint()..color = color.withValues(alpha: 0.16));
+    }
+
+    final histPts = hasForecast ? points.sublist(0, cut + 1) : points;
+    final line = _smooth(histPts);
     final fill = Path.from(line)
-      ..lineTo(size.width, size.height)
+      ..lineTo(histPts.last.dx, size.height)
       ..lineTo(0, size.height)
       ..close();
     canvas.drawPath(
@@ -120,6 +157,13 @@ class _TrendPainter extends CustomPainter {
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round,
     );
+
+    if (hasForecast) {
+      final x = points[cut].dx;
+      _dash(canvas, Offset(x, 0), Offset(x, size.height), const Color(0x55FFFFFF), vertical: true);
+      final fut = points.sublist(cut);
+      _dashPath(canvas, _smooth(fut), color);
+    }
 
     if (showGrid) {
       _label(canvas, Offset(8, points.first.dy - 10), formatRate(values.first));
@@ -146,16 +190,42 @@ class _TrendPainter extends CustomPainter {
     return path;
   }
 
-  void _dash(Canvas canvas, Offset a, Offset b, Color color) {
+  void _dash(Canvas canvas, Offset a, Offset b, Color color, {bool vertical = false}) {
     const dash = 5.0;
     const gap = 4.0;
-    var x = a.dx;
     final paint = Paint()
       ..color = color
       ..strokeWidth = 1.2;
+    if (vertical) {
+      var y = a.dy;
+      while (y < b.dy) {
+        canvas.drawLine(Offset(a.dx, y), Offset(a.dx, math.min(y + dash, b.dy)), paint);
+        y += dash + gap;
+      }
+      return;
+    }
+    var x = a.dx;
     while (x < b.dx) {
       canvas.drawLine(Offset(x, a.dy), Offset(math.min(x + dash, b.dx), a.dy), paint);
       x += dash + gap;
+    }
+  }
+
+  void _dashPath(Canvas canvas, Path path, Color color) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    for (final metric in path.computeMetrics()) {
+      var d = 0.0;
+      const dash = 7.0;
+      const gap = 5.0;
+      while (d < metric.length) {
+        final next = math.min(d + dash, metric.length);
+        canvas.drawPath(metric.extractPath(d, next), paint);
+        d = next + gap;
+      }
     }
   }
 
@@ -178,5 +248,10 @@ class _TrendPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _TrendPainter old) =>
-      old.values != values || old.color != color || old.baseline != baseline;
+      old.values != values ||
+      old.color != color ||
+      old.baseline != baseline ||
+      old.splitAt != splitAt ||
+      old.bandHigh != bandHigh ||
+      old.bandLow != bandLow;
 }

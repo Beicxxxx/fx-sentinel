@@ -6,7 +6,7 @@
 |---|---|
 | 仓库 | https://github.com/Beicxxxx/fx-sentinel （主仓） |
 | Origin | 应对齐为 `beichen-li/fx-sentinel`，见 [docs/remotes.md](docs/remotes.md) |
-| 当前版本 | [v1.0.0](https://github.com/Beicxxxx/fx-sentinel/releases/tag/v1.0.0) |
+| 当前版本 | [v1.4.0](https://github.com/Beicxxxx/fx-sentinel/releases/tag/v1.4.0) |
 | 平台 | Android 8+（App）、Python 3.12+（机器人） |
 | 行情 | [Frankfurter](https://www.frankfurter.app/)（欧洲央行日频中间价） |
 | 许可 | 代码 [MIT](LICENSE)；界面字体 [SIL OFL 1.1](NOTICE) |
@@ -22,8 +22,9 @@
 - 订阅任意 ISO 货币对（国旗图标）；盘中报价约 20 秒刷新，失败回退 ECB 日频
 - 应用内检查更新（对照 GitHub Release）
 - 应用内阈值规则（应用在前台时检查）
-- Telegram：`/watch` 预警、`/predict` 7 日情景、进程内轮询推送
-- 无大模型密钥时用均线/波动率规则基线；有 OpenAI 兼容密钥则走模型，失败回退基线
+- Telegram：`/watch` 预警、`/predict` 7 或 30 日情景、进程内轮询推送
+- 无大模型密钥时用均线/波动率规则基线；设置里可选 GPT-4o mini、DeepSeek、通义、OpenRouter 等通用模型。**没有汇率专用大模型**，模型只解说统计，失败回退基线
+- App 预测页给出分析要点、多空情景，以及历史实线 + 预测虚线 + 波动带
 
 **明确不做（v1）**
 
@@ -73,6 +74,7 @@ cd bot && python main.py
 | `/watch EUR/USD above 1.18` | 高于阈值时提醒 |
 | `/list` / `/unwatch <id>` | 列出 / 删除规则 |
 | `/predict USD/CNY` | 7 日情景 |
+| `/predict USD/CNY 30` | 30 日情景 |
 | `/help` | 命令说明 |
 
 环境变量说明见 [.env.example](.env.example)。命令细节见 [docs/telegram.md](docs/telegram.md)。

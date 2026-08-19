@@ -1,7 +1,7 @@
 name: fx_sentinel
-description: 汇率哨兵 —— ECB 中间价看板、阈值预警说明与 7 日情景预测。
+description: 汇率哨兵 —— 盘中看板、阈值预警与 7/30 日情景预测。
 publish_to: "none"
-version: 1.3.0+4
+version: 1.4.0+5
 
 environment:
   sdk: ^3.13.0

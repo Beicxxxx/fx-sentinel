@@ -31,6 +31,9 @@ class ForecastTest(unittest.TestCase):
         f = baseline_forecast(pair, stats)
         self.assertEqual(f.direction, "up")
         self.assertEqual(f.source, "baseline")
+        month = baseline_forecast(pair, stats, horizon_days=30)
+        self.assertEqual(month.horizon_days, 30)
+        self.assertGreater(abs(month.predicted_change_pct), abs(f.predicted_change_pct))
 
 
 class AlertTest(unittest.TestCase):

@@ -52,23 +52,61 @@ class Quote {
 class Forecast {
   Forecast({
     required this.pair,
+    required this.horizonDays,
     required this.direction,
     required this.confidence,
     required this.predictedChangePct,
     required this.narrative,
+    required this.analysis,
     required this.risks,
+    required this.bullCase,
+    required this.bearCase,
     required this.source,
     required this.lastFmt,
+    required this.lastRate,
+    required this.history,
+    required this.projected,
+    required this.bandHigh,
+    required this.bandLow,
   });
 
   final String pair;
+  final int horizonDays;
   final String direction;
   final int confidence;
   final double predictedChangePct;
   final String narrative;
+  final List<String> analysis;
   final List<String> risks;
+  final String bullCase;
+  final String bearCase;
   final String source;
   final String lastFmt;
+  final double lastRate;
+  final List<double> history;
+  final List<double> projected;
+  final List<double> bandHigh;
+  final List<double> bandLow;
+
+  List<double> get chartValues {
+    if (history.isEmpty) return projected;
+    return [...history, ...projected.skip(1)];
+  }
+
+  int get splitAt => history.isEmpty ? 0 : history.length - 1;
+
+  List<double> get chartBandHigh => _alignBand(bandHigh);
+
+  List<double> get chartBandLow => _alignBand(bandLow);
+
+  List<double> _alignBand(List<double> band) {
+    final chart = chartValues;
+    if (band.length != projected.length || chart.isEmpty) return const [];
+    return [
+      for (var i = 0; i < chart.length; i++)
+        i <= splitAt ? chart[i] : band[i - splitAt],
+    ];
+  }
 }
 
 class AlertRule {

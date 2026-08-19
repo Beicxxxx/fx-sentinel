@@ -22,6 +22,6 @@
 
 - `/watch USD/CNY below 7.10` 与 `/watch EUR/USD above 1.18`
 - 别名：`over`/`under`/`>`/`<`
-- 货币对大小写不敏感，也可用 `USD-CNY`
+- `/predict USD/CNY` 7 日情景；`/predict USD/CNY 30` 为 30 日。没有汇率专用模型，可选通用 Chat Completions。
 
 未出现在关注列表里的 ECB 货币对也可以写（例如 `NZD/USD`），只要 Frankfurter 支持。

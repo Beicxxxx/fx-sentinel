@@ -26,7 +26,8 @@ HELP = """汇率哨兵 · ECB 中间价
 /watch EUR/USD above 1.18
 /list 查看预警
 /unwatch <id> 删除预警
-/predict USD/CNY  7 日情景（有大模型 Key 则调用，否则规则基线）
+/predict USD/CNY      7 日情景
+/predict USD/CNY 30   30 日情景（通用大模型可选，否则规则基线）
 /help
 
 数据来自欧洲央行日频中间价，不是汇丰/中行柜台价，也不是实时 Tick。
@@ -120,12 +121,19 @@ class BotApp:
         await update.message.reply_text("已删除。" if ok else "找不到这条预警。")
 
     async def predict(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        key = (context.args or ["USD/CNY"])[0]
+        key = "USD/CNY"
+        horizon = 7
+        for arg in context.args or []:
+            low = arg.lower().rstrip("d")
+            if low in {"7", "30"}:
+                horizon = int(low)
+            elif arg:
+                key = arg
         try:
             pair = parse_pair(key)
-            series = await fetch_history(self.http, pair, days=90)
+            series = await fetch_history(self.http, pair, days=180 if horizon >= 30 else 90)
             stats = summarize(series)
-            baseline = baseline_forecast(pair, stats)
+            baseline = baseline_forecast(pair, stats, horizon_days=horizon)
             forecast = await llm_forecast(self.http, pair, stats, baseline)
         except Exception as exc:
             await update.message.reply_text(f"预测失败：{exc}")
