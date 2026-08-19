@@ -1,5 +1,7 @@
 # 汇率哨兵
 
+主仓库：[github.com/Beicxxxx/fx-sentinel](https://github.com/Beicxxxx/fx-sentinel)（个人号，后期维护以这份为准）。
+
 安卓 App + Telegram 机器人：盯 **ECB 日频中间价**、设阈值预警、用规则或大模型做 **7 日情景**（不是成交建议）。
 
 第一期不做网页、不做中行/汇丰牌价、不做系统推送。预警靠 Telegram；App 负责看盘和预测。
@@ -74,4 +76,10 @@ K 字形按韩国汉字习惯，部分简体字观感会和国标不一样。若
 app/     Flutter（Android 为主，Linux 仅供本机预览同一套界面）
 bot/     Telegram 机器人
 scripts/ 字体子集
+```
+
+克隆主仓：
+
+```bash
+git clone https://github.com/Beicxxxx/fx-sentinel.git
 ```
